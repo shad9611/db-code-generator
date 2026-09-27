@@ -1,8 +1,10 @@
 import type {
   DatabaseColumn,
+  DatabaseIndex,
   DatabaseRelation,
   DatabaseSchema,
   DatabaseTable,
+  DatabaseAdapter,
 } from "@db-code-generator/core";
 
 import mysql, { type PoolOptions, type RowDataPacket } from "mysql2/promise";
@@ -35,6 +37,14 @@ interface MysqlForeignKeyRow extends RowDataPacket {
   UPDATE_RULE: string;
 }
 
+interface MysqlIndexRow extends RowDataPacket {
+  TABLE_NAME: string;
+  INDEX_NAME: string;
+  NON_UNIQUE: number;
+  COLUMN_NAME: string | null;
+  SEQ_IN_INDEX: number;
+}
+
 export interface MysqlAdapterOptions {
   host: string;
   port: number;
@@ -43,7 +53,7 @@ export interface MysqlAdapterOptions {
   database: string;
 }
 
-export class MysqlAdapter {
+export class MysqlAdapter implements DatabaseAdapter {
   private readonly pool: mysql.Pool;
 
   constructor(options: MysqlAdapterOptions) {
@@ -66,12 +76,13 @@ export class MysqlAdapter {
     for (const table of tables) {
       const columns = await this.getColumns(table.name);
       const relations = await this.getRelations(table.name);
+      const indexes = await this.getIndexes(table.name);
 
       databaseTables.push({
         name: table.name,
         columns,
         relations,
-        indexes: [],
+        indexes,
       });
     }
 
@@ -145,6 +156,10 @@ export class MysqlAdapter {
       precision: row.NUMERIC_PRECISION ?? undefined,
       scale: row.NUMERIC_SCALE ?? undefined,
       defaultValue: row.COLUMN_DEFAULT ?? undefined,
+      enumValues:
+        row.DATA_TYPE.toLowerCase() === "enum"
+          ? this.parseEnumValues(row.COLUMN_TYPE)
+          : undefined,
     }));
   }
 
@@ -181,6 +196,48 @@ export class MysqlAdapter {
       onDelete: row.DELETE_RULE,
       onUpdate: row.UPDATE_RULE,
     }));
+  }
+
+  private async getIndexes(tableName: string): Promise<DatabaseIndex[]> {
+    const [rows] = await this.pool.query<MysqlIndexRow[]>(
+      `
+      SELECT
+        TABLE_NAME,
+        INDEX_NAME,
+        NON_UNIQUE,
+        COLUMN_NAME,
+        SEQ_IN_INDEX
+      FROM information_schema.STATISTICS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = ?
+      ORDER BY INDEX_NAME, SEQ_IN_INDEX
+    `,
+      [tableName],
+    );
+
+    const indexes = new Map<string, DatabaseIndex>();
+
+    for (const row of rows) {
+      if (!row.COLUMN_NAME) {
+        continue;
+      }
+
+      const existingIndex = indexes.get(row.INDEX_NAME);
+
+      if (existingIndex) {
+        existingIndex.columns.push(row.COLUMN_NAME);
+        continue;
+      }
+
+      indexes.set(row.INDEX_NAME, {
+        name: row.INDEX_NAME,
+        columns: [row.COLUMN_NAME],
+        unique: row.NON_UNIQUE === 0,
+        primary: row.INDEX_NAME === "PRIMARY",
+      });
+    }
+
+    return [...indexes.values()];
   }
 
   private mapColumnType(databaseType: string): DatabaseColumn["type"] {
@@ -222,9 +279,58 @@ export class MysqlAdapter {
       case "mediumblob":
       case "longblob":
         return "binary";
+      case "enum":
+        return "enum";
 
       default:
         return "unknown";
     }
+  }
+
+  private parseEnumValues(columnType: string): string[] {
+    const match = columnType.match(/^enum\((.*)\)$/i);
+
+    if (!match) {
+      return [];
+    }
+
+    const values = match[1];
+
+    const result: string[] = [];
+    let current = "";
+    let escaping = false;
+    let insideString = false;
+
+    for (const char of values) {
+      if (escaping) {
+        current += char;
+        escaping = false;
+        continue;
+      }
+
+      if (char === "\\") {
+        escaping = true;
+        continue;
+      }
+
+      if (char === "'") {
+        insideString = !insideString;
+        continue;
+      }
+
+      if (char === "," && !insideString) {
+        result.push(current.trim());
+        current = "";
+        continue;
+      }
+
+      current += char;
+    }
+
+    if (current.length > 0) {
+      result.push(current.trim());
+    }
+
+    return result;
   }
 }
