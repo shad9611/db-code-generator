@@ -1,0 +1,24 @@
+{
+  "name": "db-code-generator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Database schema introspection and code generator",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*",
+    "cli"
+  ],
+  "scripts": {
+    "build": "npm run build -ws",
+    "build:core": "npm run build -w @db-code-generator/core",
+    "build:mysql": "npm run build -w @db-code-generator/adapter-mysql",
+    "build:cli": "npm run build -w @db-code-generator/cli",
+    "dev": "npm run dev -w @db-code-generator/cli",
+    "test": "npm run test -ws",
+    "lint": "npm run lint -ws"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}

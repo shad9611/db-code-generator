@@ -1,0 +1,21 @@
+{
+  "name": "@db-code-generator/cli",
+  "version": "0.1.0",
+  "description": "CLI for database code generation",
+  "type": "module",
+  "bin": {
+    "db-code-generator": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@db-code-generator/core": "0.1.0",
+    "@db-code-generator/adapter-mysql": "0.1.0",
+    "commander": "^14.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0"
+  }
+}
