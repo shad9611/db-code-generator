@@ -1,5 +1,6 @@
 import type { DatabaseColumn } from "../schema/database-column.js";
 import type { DatabaseTable } from "../schema/database-table.js";
+import { toPascalCase, toCamelCase } from "../utils/format-file.js";
 
 export interface ModelGeneratorOptions {
   includeComments?: boolean;
@@ -9,7 +10,7 @@ export class ModelGenerator {
   constructor(private readonly options: ModelGeneratorOptions = {}) {}
 
   generate(table: DatabaseTable): string {
-    const className = this.toPascalCase(table.name);
+    const className = toPascalCase(table.name);
 
     const properties = table.columns
       .map((column) => this.generateProperty(column))
@@ -24,7 +25,7 @@ ${properties}
   }
 
   private generateProperty(column: DatabaseColumn): string {
-    const propertyName = this.toCamelCase(column.name);
+    const propertyName = toCamelCase(column.name);
 
     const type = this.getType(column);
 
@@ -66,18 +67,5 @@ ${properties}
  * Source table: ${table.name}
  * DO NOT EDIT MANUALLY.
  */`;
-  }
-
-  private toPascalCase(value: string): string {
-    return value
-      .split("_")
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join("");
-  }
-
-  private toCamelCase(value: string): string {
-    const pascal = this.toPascalCase(value);
-
-    return pascal.charAt(0).toLowerCase() + pascal.slice(1);
   }
 }

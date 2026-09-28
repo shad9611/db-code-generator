@@ -297,6 +297,7 @@ export class MysqlAdapter implements DatabaseAdapter {
     const values = match[1];
 
     const result: string[] = [];
+
     let current = "";
     let escaping = false;
     let insideString = false;

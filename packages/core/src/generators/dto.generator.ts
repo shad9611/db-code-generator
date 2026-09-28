@@ -1,9 +1,10 @@
 import type { DatabaseColumn } from "../schema/database-column.js";
 import type { DatabaseTable } from "../schema/database-table.js";
+import { toCamelCase, toPascalCase } from "../utils/format-file.js";
 
 export class DtoGenerator {
   generate(table: DatabaseTable): string {
-    const className = this.toPascalCase(table.name);
+    const className = toPascalCase(table.name);
 
     const imports = this.generateImports(table);
 
@@ -64,7 +65,7 @@ export class Update${className}Dto extends Create${className}Dto {}
   }
 
   private generateProperty(column: DatabaseColumn): string {
-    const propertyName = this.toCamelCase(column.name);
+    const propertyName = toCamelCase(column.name);
 
     const decorators: string[] = [];
 
@@ -123,18 +124,5 @@ export class Update${className}Dto extends Create${className}Dto {}
       default:
         return "unknown";
     }
-  }
-
-  private toPascalCase(value: string): string {
-    return value
-      .split("_")
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join("");
-  }
-
-  private toCamelCase(value: string): string {
-    const pascal = this.toPascalCase(value);
-
-    return pascal.charAt(0).toLowerCase() + pascal.slice(1);
   }
 }

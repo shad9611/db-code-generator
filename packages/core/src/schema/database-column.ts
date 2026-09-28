@@ -6,7 +6,7 @@ export type DatabaseColumnType =
   | "datetime"
   | "json"
   | "binary"
-  | "enun"
+  | "enum"
   | "unknown";
 
 export interface DatabaseColumn {

@@ -9,7 +9,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc"
+    "build": "rm -rf dist && tsc"
   },
   "dependencies": {
     "@db-code-generator/core": "0.1.0",
